@@ -1,0 +1,912 @@
+--[[
+Yun.win (Sci-Fi HUD + Dynamic Void Lock + 3D Surround RAGE + Fixed Attack Speed + Fully Restorable Skin & Speed Unlocker)
+放置位置：StarterPlayer > StarterPlayerScripts (LocalScript)
+]]
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- ========== 色彩 Token ==========
+local COLORS = {
+    Panel = Color3.fromRGB(8, 12, 18),
+    Row = Color3.fromRGB(14, 20, 28),
+    Border = Color3.fromRGB(40, 60, 80),
+    Accent = Color3.fromRGB(0, 220, 255),
+    AccentDim = Color3.fromRGB(20, 70, 95),
+    Text = Color3.fromRGB(200, 230, 255),
+    SubText = Color3.fromRGB(80, 115, 140),
+    Track = Color3.fromRGB(12, 18, 26),
+    Danger = Color3.fromRGB(255, 50, 50),
+    HpGreen = Color3.fromRGB(0, 255, 120),
+}
+local PANEL_WIDTH = 340
+local PANEL_HEIGHT = 580
+local PANEL_RADIUS = 4
+local ROW_RADIUS = 4
+local INITIAL_ALPHA = 75
+
+-- 全域變數
+_G.AttackSpeedMultiplier = 1.0
+_G.VoidDepthOffset = 104
+local originalItemData = {}
+
+-- ========== 攻擊速度套用與還原核心 ==========
+local function applyAttackSpeed(val)
+    _G.AttackSpeedMultiplier = val
+    pcall(function()
+        local Storage = ReplicatedStorage:FindFirstChild("Modules")
+        if Storage and Storage:FindFirstChild("ItemLibrary") then
+            local Items = require(Storage.ItemLibrary).Items
+            for name, data in pairs(Items) do
+                if typeof(data) == "table" then
+                    -- 第一次修改時，完整備份原始數值
+                    if not originalItemData[name] then
+                        originalItemData[name] = {
+                            ShootCooldown = data.ShootCooldown,
+                            ShootBurstCooldown = data.ShootBurstCooldown,
+                            AttackCooldown = data.AttackCooldown,
+                            SwingCooldown = data.SwingCooldown,
+                            MeleeCooldown = data.MeleeCooldown,
+                            Cooldown = data.Cooldown,
+                            RecoveryTime = data.RecoveryTime,
+                            ResetTime = data.ResetTime,
+                            Auto = data.Auto,
+                            Automatic = data.Automatic,
+                        }
+                    end
+                    local orig = originalItemData[name]
+                    
+                    -- 若調回 1.0，則確實將原廠數值寫回
+                    if val == 1.0 then
+                        if orig.ShootCooldown ~= nil then data.ShootCooldown = orig.ShootCooldown end
+                        if orig.ShootBurstCooldown ~= nil then data.ShootBurstCooldown = orig.ShootBurstCooldown end
+                        if orig.AttackCooldown ~= nil then data.AttackCooldown = orig.AttackCooldown end
+                        if orig.SwingCooldown ~= nil then data.SwingCooldown = orig.SwingCooldown end
+                        if orig.MeleeCooldown ~= nil then data.MeleeCooldown = orig.MeleeCooldown end
+                        if orig.Cooldown ~= nil then data.Cooldown = orig.Cooldown end
+                        if orig.RecoveryTime ~= nil then data.RecoveryTime = orig.RecoveryTime end
+                        if orig.ResetTime ~= nil then data.ResetTime = orig.ResetTime end
+                        if orig.Auto ~= nil then data.Auto = orig.Auto end
+                        if orig.Automatic ~= nil then data.Automatic = orig.Automatic end
+                    else
+                        -- 否則根據倍率進行加速
+                        if orig.ShootCooldown ~= nil then data.ShootCooldown = math.max(0.0001, orig.ShootCooldown / val) end
+                        if orig.ShootBurstCooldown ~= nil then data.ShootBurstCooldown = math.max(0.0001, orig.ShootBurstCooldown / val) end
+                        if orig.AttackCooldown ~= nil then data.AttackCooldown = math.max(0.0001, orig.AttackCooldown / val) end
+                        if orig.SwingCooldown ~= nil then data.SwingCooldown = math.max(0.0001, orig.SwingCooldown / val) end
+                        if orig.MeleeCooldown ~= nil then data.MeleeCooldown = math.max(0.0001, orig.MeleeCooldown / val) end
+                        if orig.Cooldown ~= nil then data.Cooldown = math.max(0.0001, orig.Cooldown / val) end
+                        if orig.RecoveryTime ~= nil then data.RecoveryTime = math.max(0.0001, orig.RecoveryTime / val) end
+                        if orig.ResetTime ~= nil then data.ResetTime = math.max(0.0001, orig.ResetTime / val) end
+                        if data.Auto ~= nil then data.Auto = true end
+                        if data.Automatic ~= nil then data.Automatic = true end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- ========== 具備還原機制的 Skin 解鎖核心邏輯 ==========
+local isSkinUnlocked = false
+local skinRestoreData = {}
+
+local function initSkinUnlocker(state)
+    isSkinUnlocked = state
+
+    local _plrs = game:GetService("Players")
+    local _rs = game:GetService("ReplicatedStorage")
+    local _http = game:GetService("HttpService")
+    local _lp = _plrs.LocalPlayer
+    local _pscripts = _lp.PlayerScripts
+    local _ctrl = _pscripts.Controllers
+    local _mods = _rs:WaitForChild("Modules", 10)
+
+    local _cosLib = require(_mods:WaitForChild("CosmeticLibrary", 10))
+    local _datCtrl = require(_ctrl:WaitForChild("PlayerDataController", 10))
+
+    if not isSkinUnlocked then
+        -- 執行關閉與還原邏輯
+        if skinRestoreData.origOwns then _cosLib.OwnsCosmetic = skinRestoreData.origOwns end
+        if skinRestoreData.origGet then _datCtrl.Get = skinRestoreData.origGet end
+        if skinRestoreData.origGetWep then _datCtrl.GetWeaponData = skinRestoreData.origGetWep end
+        if skinRestoreData.origOwnsNorm then _cosLib.OwnsCosmeticNormally = skinRestoreData.origOwnsNorm end
+        if skinRestoreData.origOwnsUniv then _cosLib.OwnsCosmeticUniversally = skinRestoreData.origOwnsUniv end
+        if skinRestoreData.origOwnsWep then _cosLib.OwnsCosmeticForWeapon = skinRestoreData.origOwnsWep end
+        
+        pcall(function() _datCtrl.CurrentData:Replicate("WeaponInventory") end)
+        return
+    end
+
+    local _enumLib = require(_mods:WaitForChild("EnumLibrary", 10))
+    if _enumLib then pcall(function() _enumLib:WaitForEnumBuilder() end) end
+
+    local _eq, _favs = {}, {}
+    local _buildingWep = nil
+    local _lastWep = nil
+
+    skinRestoreData.origOwns = skinRestoreData.origOwns or _cosLib.OwnsCosmetic
+    skinRestoreData.origGet = skinRestoreData.origGet or _datCtrl.Get
+    skinRestoreData.origGetWep = skinRestoreData.origGetWep or _datCtrl.GetWeaponData
+    skinRestoreData.origOwnsNorm = skinRestoreData.origOwnsNorm or _cosLib.OwnsCosmeticNormally
+    skinRestoreData.origOwnsUniv = skinRestoreData.origOwnsUniv or _cosLib.OwnsCosmeticUniversally
+    skinRestoreData.origOwnsWep = skinRestoreData.origOwnsWep or _cosLib.OwnsCosmeticForWeapon
+
+    local function _mkCosmetic(nm, ctype, opts)
+        local _base = _cosLib.Cosmetics[nm]
+        if not _base then return nil end
+        local _d = {}
+        for k, v in pairs(_base) do _d[k] = v end
+        _d.Name = nm
+        _d.Type = _d.Type or ctype
+        _d.Seed = _d.Seed or math.random(1, 1000000)
+        if _enumLib then
+            local _s, _eid = pcall(_enumLib.ToEnum, _enumLib, nm)
+            if _s and _eid then
+                _d.Enum = _eid
+                _d.ObjectID = _d.ObjectID or _eid
+            end
+        end
+        if opts then
+            if opts.inverted ~= nil then _d.Inverted = opts.inverted end
+            if opts.favoritesOnly ~= nil then _d.OnlyUseFavorites = opts.favoritesOnly end
+        end
+        return _d
+    end
+
+    local _cfgFile = "rivals_unlocker_config.json"
+    local _saveLock = false
+
+    local function _stripForSave()
+        local _out = {}
+        for wn, cos in pairs(_eq) do
+            _out[wn] = {}
+            for ct, cd in pairs(cos) do
+                if cd and cd.Name then
+                    _out[wn][ct] = {
+                        Name = cd.Name,
+                        Inverted = cd.Inverted,
+                        OnlyUseFavorites = cd.OnlyUseFavorites
+                    }
+                end
+            end
+        end
+        return { equipped = _out, favorites = _favs }
+    end
+
+    local function _loadCfg()
+        if not isfile or not readfile then return end
+        local _ok1, _ex = pcall(isfile, _cfgFile)
+        if not _ok1 or not _ex then return end
+        local _ok2, _raw = pcall(readfile, _cfgFile)
+        if not _ok2 or not _raw or _raw == "" then return end
+        local _ok3, _dec = pcall(_http.JSONDecode, _http, _raw)
+        if not _ok3 or not _dec then return end
+        if _dec.favorites then _favs = _dec.favorites end
+        if _dec.equipped then
+            _eq = {}
+            for wn, cos in pairs(_dec.equipped) do
+                _eq[wn] = {}
+                for ct, sd in pairs(cos) do
+                    if sd and sd.Name then
+                        if _cosLib.Cosmetics[sd.Name] then
+                            local _cloned = _mkCosmetic(sd.Name, ct, {
+                                inverted = sd.Inverted,
+                                favoritesOnly = sd.OnlyUseFavorites
+                            })
+                            if _cloned then _eq[wn][ct] = _cloned end
+                        end
+                    end
+                end
+                if not next(_eq[wn]) then _eq[wn] = nil end
+            end
+        end
+    end
+    _loadCfg()
+
+    local function _saveCfg()
+        if not writefile or _saveLock then return end
+        _saveLock = true
+        task.spawn(function()
+            task.wait(1)
+            local _payload = _stripForSave()
+            local _ok, _enc = pcall(_http.JSONEncode, _http, _payload)
+            if _ok then pcall(writefile, _cfgFile, _enc) end
+            _saveLock = false
+        end)
+    end
+
+    local _cosTypes = {"Skin","Wrap","Charm","Dance","Emote"}
+    local function _isCosType(cosObj)
+        if not cosObj then return false end
+        for _, t in ipairs(_cosTypes) do
+            if cosObj.Type == t then return true end
+        end
+        return false
+    end
+
+    _cosLib.OwnsCosmeticNormally = function(self, inv, nm, wep)
+        if not isSkinUnlocked then return skinRestoreData.origOwnsNorm(self, inv, nm, wep) end
+        local c = _cosLib.Cosmetics[nm]
+        if c and c.Type == "Skin" then return true end
+        return false
+    end
+    _cosLib.OwnsCosmeticUniversally = function(self, inv, nm, wep)
+        if not isSkinUnlocked then return skinRestoreData.origOwnsUniv(self, inv, nm, wep) end
+        local c = _cosLib.Cosmetics[nm]
+        if c and c.Type == "Skin" then return true end
+        return false
+    end
+    _cosLib.OwnsCosmeticForWeapon = function(self, inv, nm, wep)
+        if not isSkinUnlocked then return skinRestoreData.origOwnsWep(self, inv, nm, wep) end
+        local c = _cosLib.Cosmetics[nm]
+        if c and c.Type == "Skin" then return true end
+        return false
+    end
+
+    _cosLib.OwnsCosmetic = function(self, inv, nm, wep)
+        if not isSkinUnlocked then return skinRestoreData.origOwns(self, inv, nm, wep) end
+        if nm:find("MISSING_") or nm == "Bubble Gun" then
+            return skinRestoreData.origOwns(self, inv, nm, wep)
+        end
+        local c = _cosLib.Cosmetics[nm]
+        if c and _isCosType(c) then return true end
+        return skinRestoreData.origOwns(self, inv, nm, wep)
+    end
+
+    _datCtrl.Get = function(self, key)
+        local _val = skinRestoreData.origGet(self, key)
+        if not isSkinUnlocked then return _val end
+        if key == "CosmeticInventory" then
+            local _prx = {}
+            if _val then
+                for k, v in pairs(_val) do
+                    local c = _cosLib.Cosmetics[k]
+                    if c and _isCosType(c) then _prx[k] = v end
+                end
+            end
+            return setmetatable(_prx, {
+                __index = function(t, k)
+                    local c = _cosLib.Cosmetics[k]
+                    if c and _isCosType(c) then return true end
+                    return nil
+                end
+            })
+        end
+        if key == "FavoritedCosmetics" then
+            local _res = _val and table.clone(_val) or {}
+            for wep, fv in pairs(_favs) do
+                _res[wep] = _res[wep] or {}
+                for nm, isFav in pairs(fv) do
+                    local c = _cosLib.Cosmetics[nm]
+                    if c and _isCosType(c) then _res[wep][nm] = isFav end
+                end
+            end
+            return _res
+        end
+        return _val
+    end
+
+    _datCtrl.GetWeaponData = function(self, wn)
+        local _d = skinRestoreData.origGetWep(self, wn)
+        if not _d or not isSkinUnlocked then return _d end
+        local _m = {}
+        for k, v in pairs(_d) do _m[k] = v end
+        _m.Name = wn
+        if _eq[wn] then
+            for ct, cd in pairs(_eq[wn]) do _m[ct] = cd end
+        end
+        return _m
+    end
+
+    local _fightCtrl
+    pcall(function()
+        _fightCtrl = require(_ctrl:WaitForChild("FighterController", 10))
+    end)
+
+    if hookmetamethod then
+        local _remotes = _rs:FindFirstChild("Remotes")
+        local _dataRem = _remotes and _remotes:FindFirstChild("Data")
+        local _equipRem = _dataRem and _dataRem:FindFirstChild("EquipCosmetic")
+        local _favRem = _dataRem and _dataRem:FindFirstChild("FavoriteCosmetic")
+        local _repRem = _remotes and _remotes:FindFirstChild("Replication")
+        local _fightRem = _repRem and _repRem:FindFirstChild("Fighter")
+        local _useItmRem = _fightRem and _fightRem:FindFirstChild("UseItem")
+
+        if _equipRem then
+            local _onc
+            _onc = hookmetamethod(game, "__namecall", function(self, ...)
+                if not isSkinUnlocked then return _onc(self, ...) end
+                if getnamecallmethod() ~= "FireServer" then return _onc(self, ...) end
+                local _a = {...}
+
+                if _useItmRem and self == _useItmRem then
+                    local _oid = _a[1]
+                    if _fightCtrl then
+                        pcall(function()
+                            local _f = _fightCtrl:GetFighter(_lp)
+                            if _f and _f.Items then
+                                for _, itm in pairs(_f.Items) do
+                                    if itm:Get("ObjectID") == _oid then
+                                        _lastWep = itm.Name
+                                        break
+                                    end
+                                end
+                            end
+                        end)
+                    end
+                end
+
+                if self == _equipRem then
+                    local _wn = _a[1]
+                    local _ct = _a[2]
+                    local _cn = _a[3]
+                    local _opts = _a[4] or {}
+                    if _cn and _cn ~= "None" and _cn ~= "" then
+                        local _inv = _datCtrl:Get("CosmeticInventory")
+                        if _inv and rawget(_inv, _cn) then return _onc(self, ...) end
+                    end
+                    _eq[_wn] = _eq[_wn] or {}
+                    if not _cn or _cn == "None" or _cn == "" then
+                        _eq[_wn][_ct] = nil
+                        if not next(_eq[_wn]) then _eq[_wn] = nil end
+                    else
+                        local _cloned = _mkCosmetic(_cn, _ct, {
+                            inverted = _opts.IsInverted,
+                            favoritesOnly = _opts.OnlyUseFavorites
+                        })
+                        if _cloned then _eq[_wn][_ct] = _cloned end
+                    end
+                    task.defer(function()
+                        pcall(function() _datCtrl.CurrentData:Replicate("WeaponInventory") end)
+                    end)
+                    _saveCfg()
+                    return
+                end
+
+                if self == _favRem then
+                    local _cos = _cosLib.Cosmetics[_a[2]]
+                    if _cos then
+                        _favs[_a[1]] = _favs[_a[1]] or {}
+                        _favs[_a[1]][_a[2]] = _a[3] or nil
+                        task.spawn(function()
+                            pcall(function() _datCtrl.CurrentData:Replicate("FavoritedCosmetics") end)
+                        end)
+                        _saveCfg()
+                    end
+                    return
+                end
+
+                return _onc(self, ...)
+            end)
+        end
+    end
+
+    local _cliItem
+    pcall(function()
+        _cliItem = require(_lp.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem)
+    end)
+
+    if _cliItem and _cliItem._CreateViewModel then
+        local _origCVM = _cliItem._CreateViewModel
+        _cliItem._CreateViewModel = function(self, vmRef)
+            if not isSkinUnlocked then return _origCVM(self, vmRef) end
+            local _wn = self.Name
+            local _wp = self.ClientFighter and self.ClientFighter.Player
+            _buildingWep = (_wp == _lp) and _wn or nil
+            if _wp == _lp and _eq[_wn] then
+                local _dk = self:ToEnum("Data")
+                if vmRef[_dk] then
+                    if _eq[_wn].Skin then
+                        vmRef[_dk][self:ToEnum("Skin")] = _eq[_wn].Skin
+                        vmRef[_dk][self:ToEnum("Name")] = _eq[_wn].Skin.Name
+                    end
+                    if _eq[_wn].Charm then vmRef[_dk][self:ToEnum("Charm")] = _eq[_wn].Charm end
+                    if _eq[_wn].Wrap then vmRef[_dk][self:ToEnum("Wrap")] = _eq[_wn].Wrap end
+                elseif vmRef.Data then
+                    if _eq[_wn].Skin then vmRef.Data.Skin = _eq[_wn].Skin; vmRef.Data.Name = _eq[_wn].Skin.Name end
+                    if _eq[_wn].Charm then vmRef.Data.Charm = _eq[_wn].Charm end
+                    if _eq[_wn].Wrap then vmRef.Data.Wrap = _eq[_wn].Wrap end
+                end
+            end
+            local _r = _origCVM(self, vmRef)
+            _buildingWep = nil
+            return _r
+        end
+    end
+
+    local _vmMod = _lp.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem:FindFirstChild("ClientViewModel")
+    if _vmMod then
+        local _CVM = require(_vmMod)
+        local _origNew = _CVM.new
+        _CVM.new = function(repData, cliItm)
+            if not isSkinUnlocked then return _origNew(repData, cliItm) end
+            local _wp = cliItm.ClientFighter and cliItm.ClientFighter.Player
+            local _wn = _buildingWep or cliItm.Name
+            if _wp == _lp and _eq[_wn] then
+                local _RC = require(_rs.Modules.ReplicatedClass)
+                local _dk = _RC:ToEnum("Data")
+                repData[_dk] = repData[_dk] or {}
+                local _cos = _eq[_wn]
+                if _cos.Skin then repData[_dk][_RC:ToEnum("Skin")] = _cos.Skin end
+                if _cos.Charm then repData[_dk][_RC:ToEnum("Charm")] = _cos.Charm end
+                if _cos.Wrap then repData[_dk][_RC:ToEnum("Wrap")] = _cos.Wrap end
+            end
+            return _origNew(repData, cliItm)
+        end
+    end
+end
+
+-- ========== 建立 ScreenGui ==========
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SettingsPanel"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, PANEL_WIDTH, 0, PANEL_HEIGHT)
+mainFrame.Position = UDim2.new(1, -30 - PANEL_WIDTH, 0.5, -PANEL_HEIGHT / 2)
+mainFrame.BackgroundColor3 = COLORS.Panel
+mainFrame.BackgroundTransparency = INITIAL_ALPHA / 100
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.ZIndex = 1
+mainFrame.Parent = screenGui
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, PANEL_RADIUS)
+
+local mainStroke = Instance.new("UIStroke", mainFrame)
+mainStroke.Name = "MarqueeStroke"
+mainStroke.Thickness = 1.5
+mainStroke.Color = COLORS.Accent
+
+local isUnderAttack = false
+RunService.RenderStepped:Connect(function()
+    if mainFrame.Visible then
+        if isUnderAttack then
+            local redFlash = (math.sin(tick() * 20) + 1) / 2
+            mainStroke.Color = Color3.fromRGB(255, redFlash * 50, redFlash * 50)
+            mainStroke.Transparency = 0
+        else
+            mainStroke.Color = COLORS.Accent
+            local alpha = (math.sin(tick() * 3) + 1) / 2
+            mainStroke.Transparency = math.clamp(alpha * 0.7, 0.2, 0.9)
+        end
+    end
+end)
+
+-- 標題列
+local header = Instance.new("Frame")
+header.Name = "Header"
+header.Size = UDim2.new(1, 0, 0, 56)
+header.BackgroundTransparency = 1
+header.ZIndex = 2
+header.Parent = mainFrame
+
+local title = Instance.new("TextLabel")
+title.BackgroundTransparency = 1
+title.Position = UDim2.new(0, 36, 0, 8)
+title.Size = UDim2.new(1, -80, 0, 20)
+title.Font = Enum.Font.GothamBold
+title.Text = "SYSTEM CONFIG"
+title.TextColor3 = COLORS.Text
+title.TextSize = 15
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.ZIndex = 2
+title.Parent = header
+
+local subtitle = Instance.new("TextLabel")
+subtitle.BackgroundTransparency = 1
+subtitle.Position = UDim2.new(0, 36, 0, 28)
+subtitle.Size = UDim2.new(1, -80, 0, 14)
+subtitle.Font = Enum.Font.Code
+subtitle.Text = "SECURE_HUD // v3.9_RESTORE_FIX"
+subtitle.TextColor3 = COLORS.Accent
+subtitle.TextSize = 11
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.ZIndex = 2
+subtitle.Parent = header
+
+local closeButton = Instance.new("TextButton")
+closeButton.BackgroundTransparency = 1
+closeButton.Position = UDim2.new(1, -44, 0, 12)
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Font = Enum.Font.Code
+closeButton.Text = "[X]"
+closeButton.TextColor3 = COLORS.SubText
+closeButton.TextSize = 13
+closeButton.ZIndex = 2
+closeButton.Parent = header
+closeButton.MouseButton1Click:Connect(function() mainFrame.Visible = false end)
+
+-- RAGE 目標血條
+local hpContainer = Instance.new("Frame")
+hpContainer.BackgroundColor3 = COLORS.Row
+hpContainer.BackgroundTransparency = INITIAL_ALPHA / 100
+hpContainer.Position = UDim2.new(0, 14, 0, 68)
+hpContainer.Size = UDim2.new(1, -28, 0, 48)
+hpContainer.ZIndex = 2
+hpContainer.Parent = mainFrame
+Instance.new("UICorner", hpContainer).CornerRadius = UDim.new(0, ROW_RADIUS)
+Instance.new("UIStroke", hpContainer).Color = COLORS.Border
+
+local hpLabel = Instance.new("TextLabel")
+hpLabel.BackgroundTransparency = 1
+hpLabel.Position = UDim2.new(0, 12, 0, 6)
+hpLabel.Size = UDim2.new(0.5, 0, 0, 16)
+hpLabel.Font = Enum.Font.Code
+hpLabel.Text = "RAGE_TARGET"
+hpLabel.TextColor3 = COLORS.SubText
+hpLabel.TextSize = 12
+hpLabel.ZIndex = 2
+hpLabel.Parent = hpContainer
+
+local hpValueLabel = Instance.new("TextLabel")
+hpValueLabel.BackgroundTransparency = 1
+hpValueLabel.Position = UDim2.new(0.35, 0, 0, 6)
+hpValueLabel.Size = UDim2.new(0.65, -12, 0, 16)
+hpValueLabel.Font = Enum.Font.Code
+hpValueLabel.Text = "OFF / NO_TARGET"
+hpValueLabel.TextColor3 = COLORS.Danger
+hpValueLabel.TextSize = 11
+hpValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+hpValueLabel.ZIndex = 2
+hpValueLabel.Parent = hpContainer
+
+local hpBarTrack = Instance.new("Frame")
+hpBarTrack.Position = UDim2.new(0, 12, 0, 28)
+hpBarTrack.Size = UDim2.new(1, -24, 0, 8)
+hpBarTrack.BackgroundColor3 = COLORS.Track
+hpBarTrack.ZIndex = 2
+hpBarTrack.Parent = hpContainer
+Instance.new("UICorner", hpBarTrack).CornerRadius = UDim.new(0, 2)
+
+local hpBarFill = Instance.new("Frame")
+hpBarFill.Size = UDim2.new(0, 0, 1, 0)
+hpBarFill.BackgroundColor3 = COLORS.Danger
+hpBarFill.ZIndex = 3
+hpBarFill.Parent = hpBarTrack
+Instance.new("UICorner", hpBarFill).CornerRadius = UDim.new(0, 2)
+
+-- 內容容器
+local content = Instance.new("Frame")
+content.Name = "Content"
+content.BackgroundTransparency = 1
+content.Position = UDim2.new(0, 14, 0, 126)
+content.Size = UDim2.new(1, -28, 1, -136)
+content.ZIndex = 2
+content.Parent = mainFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 8)
+listLayout.Parent = content
+
+local function createSlider(order, labelText, min, max, default, unitSuffix, isDecimal, onChanged)
+    local container = Instance.new("Frame")
+    container.BackgroundColor3 = COLORS.Row
+    container.BackgroundTransparency = INITIAL_ALPHA / 100
+    container.Size = UDim2.new(1, 0, 0, 48)
+    container.LayoutOrder = order
+    container.ZIndex = 2
+    container.Parent = content
+    Instance.new("UICorner", container).CornerRadius = UDim.new(0, ROW_RADIUS)
+    Instance.new("UIStroke", container).Color = COLORS.Border
+
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0, 12, 0, 4)
+    label.Size = UDim2.new(0.6, 0, 0, 16)
+    label.Font = Enum.Font.Code
+    label.Text = labelText
+    label.TextColor3 = COLORS.SubText
+    label.TextSize = 12
+    label.ZIndex = 2
+    label.Parent = container
+
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.Position = UDim2.new(0.4, 0, 0, 4)
+    valueLabel.Size = UDim2.new(0.55, 0, 0, 16)
+    valueLabel.Font = Enum.Font.Code
+    valueLabel.Text = tostring(default) .. (unitSuffix or "")
+    valueLabel.TextColor3 = COLORS.Accent
+    valueLabel.TextSize = 12
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valueLabel.ZIndex = 2
+    valueLabel.Parent = container
+
+    local track = Instance.new("Frame")
+    track.Position = UDim2.new(0, 12, 0, 28)
+    track.Size = UDim2.new(1, -24, 0, 4)
+    track.BackgroundColor3 = COLORS.Track
+    track.ZIndex = 2
+    track.Parent = container
+
+    local fillRatio = (default - min) / (max - min)
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(fillRatio, 0, 1, 0)
+    fill.BackgroundColor3 = COLORS.Accent
+    fill.ZIndex = 2
+    fill.Parent = track
+
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 4, 0, 12)
+    knob.AnchorPoint = Vector2.new(0.5, 0.5)
+    knob.Position = UDim2.new(fillRatio, 0, 0.5, 0)
+    knob.BackgroundColor3 = COLORS.Accent
+    knob.ZIndex = 3
+    knob.Parent = track
+
+    local dragButton = Instance.new("TextButton")
+    dragButton.BackgroundTransparency = 1
+    dragButton.Text = ""
+    dragButton.Size = UDim2.new(1, 10, 1, 16)
+    dragButton.Position = UDim2.new(0, -5, 0.5, -8)
+    dragButton.ZIndex = 4
+    dragButton.Parent = track
+
+    local dragging = false
+    local function updateFromInputX(inputX)
+        local ratio = math.clamp((inputX - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        local value = min + (max - min) * ratio
+        if isDecimal then
+            value = math.floor(value * 10 + 0.5) / 10
+            valueLabel.Text = string.format("%.1f%s", value, unitSuffix or "")
+        else
+            value = math.floor(value + 0.5)
+            valueLabel.Text = tostring(value) .. (unitSuffix or "")
+        end
+        fill.Size = UDim2.new((value - min)/(max - min), 0, 1, 0)
+        knob.Position = UDim2.new((value - min)/(max - min), 0, 0.5, 0)
+        if onChanged then onChanged(value) end
+    end
+
+    dragButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            updateFromInputX(input.Position.X)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateFromInputX(input.Position.X)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+end
+
+local function createButton(order, labelText, buttonText, onClick)
+    local row = Instance.new("Frame")
+    row.BackgroundColor3 = COLORS.Row
+    row.BackgroundTransparency = INITIAL_ALPHA / 100
+    row.Size = UDim2.new(1, 0, 0, 40)
+    row.LayoutOrder = order
+    row.ZIndex = 2
+    row.Parent = content
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, ROW_RADIUS)
+    Instance.new("UIStroke", row).Color = COLORS.Border
+
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0, 12, 0, 0)
+    label.Size = UDim2.new(1, -110, 1, 0)
+    label.Font = Enum.Font.Code
+    label.Text = labelText
+    label.TextColor3 = COLORS.Text
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 2
+    label.Parent = row
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 80, 0, 24)
+    btn.Position = UDim2.new(1, -88, 0.5, -12)
+    btn.BackgroundColor3 = COLORS.AccentDim
+    btn.Font = Enum.Font.Code
+    btn.Text = buttonText
+    btn.TextColor3 = COLORS.Accent
+    btn.TextSize = 12
+    btn.ZIndex = 3
+    btn.Parent = row
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, ROW_RADIUS)
+    Instance.new("UIStroke", btn).Color = COLORS.Accent
+
+    btn.MouseButton1Click:Connect(function() if onClick then onClick(btn) end end)
+    return row
+end
+
+-- 1. ATTACK_SPEED (拉回 1.0x 會完整還原原廠射速)
+createSlider(1, "ATTACK_SPEED", 1.0, 20.0, 1.0, "x", true, function(val)
+    applyAttackSpeed(val)
+end)
+
+-- 2. CAMERA_FOV
+createSlider(2, "CAMERA_FOV", 50, 120, 120, "", false, function(val) camera.FieldOfView = val end)
+
+-- 3. VOID_DEPTH
+createSlider(3, "VOID_DEPTH", 20, 300, 104, " studs", false, function(val)
+    _G.VoidDepthOffset = val
+end)
+
+-- 4. SKIN_UNLOCKER
+createButton(4, "SKIN_UNLOCKER", "LOAD", function(btn)
+    local newState = not isSkinUnlocked
+    initSkinUnlocker(newState)
+    btn.Text = newState and "ACTIVE" or "LOAD"
+    btn.TextColor3 = newState and COLORS.Panel or COLORS.Accent
+    btn.BackgroundColor3 = newState and COLORS.Accent or COLORS.AccentDim
+end)
+
+-- ========== 核心戰鬥迴圈 (VOID_LOCK & 3D Surround RAGE) ==========
+local isVoidLockActive = false
+local originalPosition = nil
+local lastHealth = 100
+
+local isRageActive = false
+local rageOriginalPos = nil
+local currentRageTarget = nil
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if isRageActive then
+            local char = player.Character
+            local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                local nearestHum, nearestRoot, nearestName = nil, nil, "NO_TARGET"
+                local shortestDist = math.huge
+                for _, op in ipairs(Players:GetPlayers()) do
+                    if op ~= player and op.Character then
+                        local oRoot = op.Character:FindFirstChild("HumanoidRootPart")
+                        local oHum = op.Character:FindFirstChildOfClass("Humanoid")
+                        if oRoot and oHum and oHum.Health > 0 then
+                            local dist = (rootPart.Position - oRoot.Position).Magnitude
+                            if dist < shortestDist then
+                                shortestDist = dist
+                                nearestHum = oHum
+                                nearestRoot = oRoot
+                                nearestName = op.Name
+                            end
+                        end
+                    end
+                end
+                currentRageTarget = { root = nearestRoot, hum = nearestHum, name = nearestName }
+            else
+                currentRageTarget = nil
+            end
+        end
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    local char = player.Character
+    if not char then return end
+    local rootPart = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not rootPart or not hum then return end
+
+    if isVoidLockActive then
+        if hum.Health < lastHealth then
+            isUnderAttack = true
+            subtitle.Text = "!! WARNING: UNDER ATTACK !!"
+            subtitle.TextColor3 = COLORS.Danger
+            task.delay(0.8, function()
+                if isVoidLockActive then subtitle.Text = "SECURE_HUD // v3.9_RESTORE_FIX"; subtitle.TextColor3 = COLORS.Accent; isUnderAttack = false end
+            end)
+        end
+        lastHealth = hum.Health
+        if originalPosition then
+            local teleRange = 40
+            local offsetX = (math.random() * 2 - 1) * teleRange
+            local offsetZ = (math.random() * 2 - 1) * teleRange
+            local targetY = originalPosition.Y - _G.VoidDepthOffset
+            rootPart.CFrame = CFrame.new(originalPosition.X + offsetX, targetY, originalPosition.Z + offsetZ)
+            rootPart.AssemblyLinearVelocity = Vector3.zero
+            rootPart.AssemblyAngularVelocity = Vector3.zero
+        end
+    elseif isRageActive then
+        hum.AutoRotate = false
+        for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false end end
+        if currentRageTarget and currentRageTarget.root and currentRageTarget.hum.Health > 0 then
+            local enemyRoot = currentRageTarget.root
+            local curHp = math.floor(currentRageTarget.hum.Health + 0.5)
+            local maxHp = math.floor(currentRageTarget.hum.MaxHealth + 0.5)
+            hpValueLabel.Text = string.format("%s: %d/%d", currentRageTarget.name, curHp, maxHp)
+            local hpRatio = math.clamp(currentRageTarget.hum.Health / currentRageTarget.hum.MaxHealth, 0, 1)
+            hpBarFill.Size = UDim2.new(hpRatio, 0, 1, 0)
+
+            local t = tick() * 12
+            local radius = 3.5
+            local angle = t % (math.pi * 2)
+            local offsetX = math.cos(angle) * radius
+            local offsetZ = math.sin(angle) * radius
+            local offsetY = math.sin(t * 1.5) * 2.5
+
+            local targetPos = enemyRoot.Position + Vector3.new(offsetX, offsetY, offsetZ)
+            rootPart.CFrame = CFrame.lookAt(targetPos, enemyRoot.Position)
+            rootPart.AssemblyLinearVelocity = Vector3.zero
+            rootPart.AssemblyAngularVelocity = Vector3.zero
+        else
+            hpValueLabel.Text = "NO_TARGET"
+            hpBarFill.Size = UDim2.new(0, 0, 1, 0)
+            if rageOriginalPos then rootPart.CFrame = CFrame.new(rageOriginalPos) end
+        end
+    end
+end)
+
+-- 5. VOID_LOCK 按鈕
+createButton(5, "VOID_LOCK", "OFF", function(btn)
+    isVoidLockActive = not isVoidLockActive
+    local char = player.Character
+    local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if isVoidLockActive then
+        if rootPart and hum then
+            originalPosition = rootPart.Position
+            lastHealth = hum.Health
+        end
+        btn.Text = "ON"
+        btn.TextColor3 = COLORS.Panel
+        btn.BackgroundColor3 = COLORS.Accent
+    else
+        isUnderAttack = false
+        subtitle.Text = "SECURE_HUD // v3.9_RESTORE_FIX"
+        subtitle.TextColor3 = COLORS.Accent
+        if rootPart and originalPosition then
+            rootPart.CFrame = CFrame.new(originalPosition)
+        end
+        originalPosition = nil
+        btn.Text = "OFF"
+        btn.TextColor3 = COLORS.Accent
+        btn.BackgroundColor3 = COLORS.AccentDim
+    end
+end)
+
+-- 6. RAGE 按鈕
+createButton(6, "RAGE", "OFF", function(btn)
+    isRageActive = not isRageActive
+    local char = player.Character
+    local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if isRageActive then
+        if rootPart then rageOriginalPos = rootPart.Position end
+        btn.Text = "ON"
+        btn.TextColor3 = COLORS.Panel
+        btn.BackgroundColor3 = COLORS.Accent
+    else
+        if rootPart and rageOriginalPos then rootPart.CFrame = CFrame.new(rageOriginalPos) end
+        if hum then hum.AutoRotate = true; hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+        if char then for _, p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end end
+        rageOriginalPos = nil
+        currentRageTarget = nil
+        hpValueLabel.Text = "OFF / NO_TARGET"
+        hpBarFill.Size = UDim2.new(0, 0, 1, 0)
+        btn.Text = "OFF"
+        btn.TextColor3 = COLORS.Accent
+        btn.BackgroundColor3 = COLORS.AccentDim
+    end
+end)
+
+-- 底部切換按鈕
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "OpenSettingsButton"
+toggleButton.Size = UDim2.new(0, 46, 0, 46)
+toggleButton.Position = UDim2.new(1, -66, 1, -66)
+toggleButton.BackgroundColor3 = COLORS.Panel
+toggleButton.Font = Enum.Font.Code
+toggleButton.Text = "[#]"
+toggleButton.TextColor3 = COLORS.Accent
+toggleButton.TextSize = 14
+toggleButton.Parent = screenGui
+toggleButton.MouseButton1Click:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
