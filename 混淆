@@ -1,0 +1,715 @@
+--[[
+SettingsPanel.lua (Fixed & Cleaned Version)
+]]
+local _0xAA1 = game:GetService("Players")
+local _0xBB2 = game:GetService("TweenService")
+local _0xCC3 = game:GetService("UserInputService")
+local _0xDD4 = game:GetService("RunService")
+local _0xEE5 = game:GetService("ReplicatedStorage")
+local _0xFF6 = _0xAA1.LocalPlayer
+local _0x117 = workspace.CurrentCamera
+
+local _0x228 = {
+    __p = Color3.fromRGB(8, 12, 18),
+    __r = Color3.fromRGB(14, 20, 28),
+    __b = Color3.fromRGB(40, 60, 80),
+    __a = Color3.fromRGB(0, 220, 255),
+    __ad = Color3.fromRGB(20, 70, 95),
+    __t = Color3.fromRGB(200, 230, 255),
+    __st = Color3.fromRGB(80, 115, 140),
+    __tr = Color3.fromRGB(12, 18, 26),
+    __d = Color3.fromRGB(255, 50, 50),
+    __h = Color3.fromRGB(0, 255, 120),
+}
+local _0x339 = 340
+local _0x44A = 580
+local _0x55B = 4
+local _0x66C = 4
+local _0x77D = 75
+
+_G.AttackSpeedMultiplier = 1.0
+_G.VoidDepthOffset = 104
+local _0x88E = {}
+
+local function _0x99F(_0x1a)
+    _G.AttackSpeedMultiplier = _0x1a
+    pcall(function()
+        local _0x2b = _0xEE5:FindFirstChild("Modules")
+        if _0x2b and _0x2b:FindFirstChild("ItemLibrary") then
+            local _0x3c = require(_0x2b.ItemLibrary).Items
+            for _0x4d, _0x5e in pairs(_0x3c) do
+                if typeof(_0x5e) == "table" then
+                    if not _0x88E[_0x4d] then
+                        _0x88E[_0x4d] = {
+                            ShootCooldown = _0x5e.ShootCooldown,
+                            ShootBurstCooldown = _0x5e.ShootBurstCooldown,
+                            AttackCooldown = _0x5e.AttackCooldown,
+                            SwingCooldown = _0x5e.SwingCooldown,
+                            MeleeCooldown = _0x5e.MeleeCooldown,
+                            Cooldown = _0x5e.Cooldown,
+                            RecoveryTime = _0x5e.RecoveryTime,
+                            ResetTime = _0x5e.ResetTime,
+                            Auto = _0x5e.Auto,
+                            Automatic = _0x5e.Automatic,
+                        }
+                    end
+                    local _0x6f = _0x88E[_0x4d]
+                    if _0x1a == 1.0 then
+                        if _0x6f.ShootCooldown ~= nil then _0x5e.ShootCooldown = _0x6f.ShootCooldown end
+                        if _0x6f.ShootBurstCooldown ~= nil then _0x5e.ShootBurstCooldown = _0x6f.ShootBurstCooldown end
+                        if _0x6f.AttackCooldown ~= nil then _0x5e.AttackCooldown = _0x6f.AttackCooldown end
+                        if _0x6f.SwingCooldown ~= nil then _0x5e.SwingCooldown = _0x6f.SwingCooldown end
+                        if _0x6f.MeleeCooldown ~= nil then _0x5e.MeleeCooldown = _0x6f.MeleeCooldown end
+                        if _0x6f.Cooldown ~= nil then _0x5e.Cooldown = _0x6f.Cooldown end
+                        if _0x6f.RecoveryTime ~= nil then _0x5e.RecoveryTime = _0x6f.RecoveryTime end
+                        if _0x6f.ResetTime ~= nil then _0x5e.ResetTime = _0x6f.ResetTime end
+                        if _0x6f.Auto ~= nil then _0x5e.Auto = _0x6f.Auto end
+                        if _0x6f.Automatic ~= nil then _0x5e.Automatic = _0x6f.Automatic end
+                    else
+                        if _0x6f.ShootCooldown ~= nil then _0x5e.ShootCooldown = math.max(0.0001, _0x6f.ShootCooldown / _0x1a) end
+                        if _0x6f.ShootBurstCooldown ~= nil then _0x5e.ShootBurstCooldown = math.max(0.0001, _0x6f.ShootBurstCooldown / _0x1a) end
+                        if _0x6f.AttackCooldown ~= nil then _0x5e.AttackCooldown = math.max(0.0001, _0x6f.AttackCooldown / _0x1a) end
+                        if _0x6f.SwingCooldown ~= nil then _0x5e.SwingCooldown = math.max(0.0001, _0x6f.SwingCooldown / _0x1a) end
+                        if _0x6f.MeleeCooldown ~= nil then _0x5e.MeleeCooldown = math.max(0.0001, _0x6f.MeleeCooldown / _0x1a) end
+                        if _0x6f.Cooldown ~= nil then _0x5e.Cooldown = math.max(0.0001, _0x6f.Cooldown / _0x1a) end
+                        if _0x6f.RecoveryTime ~= nil then _0x5e.RecoveryTime = math.max(0.0001, _0x6f.RecoveryTime / _0x1a) end
+                        if _0x6f.ResetTime ~= nil then _0x5e.ResetTime = math.max(0.0001, _0x6f.ResetTime / _0x1a) end
+                        if _0x5e.Auto ~= nil then _0x5e.Auto = true end
+                        if _0x5e.Automatic ~= nil then _0x5e.Automatic = true end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local _0xAB2 = false
+local _0xBC3 = {}
+
+local function _0xCD4(_0xCE5)
+    _0xAB2 = _0xCE5
+    local _0xDF6 = game:GetService("Players")
+    local _0xE07 = game:GetService("ReplicatedStorage")
+    local _0xF18 = game:GetService("HttpService")
+    local _0x129 = _0xDF6.LocalPlayer
+    local _0x23A = _0x129:WaitForChild("PlayerScripts", 10)
+    if not _0x23A then return end
+    local _0x34B = _0x23A:WaitForChild("Controllers", 10)
+    local _0x45C = _0xE07:WaitForChild("Modules", 10)
+    if not _0x34B or not _0x45C then return end
+
+    local _0x56D = require(_0x45C:WaitForChild("CosmeticLibrary", 10))
+    local _0x67E = require(_0x34B:WaitForChild("PlayerDataController", 10))
+
+    if not _0xAB2 then
+        if _0xBC3.origOwns then _0x56D.OwnsCosmetic = _0xBC3.origOwns end
+        if _0xBC3.origGet then _0x67E.Get = _0xBC3.origGet end
+        if _0xBC3.origGetWep then _0x67E.GetWeaponData = _0xBC3.origGetWep end
+        if _0xBC3.origOwnsNorm then _0x56D.OwnsCosmeticNormally = _0xBC3.origOwnsNorm end
+        if _0xBC3.origOwnsUniv then _0x56D.OwnsCosmeticUniversally = _0xBC3.origOwnsUniv end
+        if _0xBC3.origOwnsWep then _0x56D.OwnsCosmeticForWeapon = _0xBC3.origOwnsWep end
+        pcall(function() _0x67E.CurrentData:Replicate("WeaponInventory") end)
+        return
+    end
+
+    local _0x78F = require(_0x45C:WaitForChild("EnumLibrary", 10))
+    if _0x78F then pcall(function() _0x78F:WaitForEnumBuilder() end) end
+
+    local _0x890, _0x9A1 = {}, {}
+    _0xBC3.origOwns = _0xBC3.origOwns or _0x56D.OwnsCosmetic
+    _0xBC3.origGet = _0xBC3.origGet or _0x67E.Get
+    _0xBC3.origGetWep = _0xBC3.origGetWep or _0x67E.GetWeaponData
+    _0xBC3.origOwnsNorm = _0xBC3.origOwnsNorm or _0x56D.OwnsCosmeticNormally
+    _0xBC3.origOwnsUniv = _0xBC3.origOwnsUniv or _0x56D.OwnsCosmeticUniversally
+    _0xBC3.origOwnsWep = _0xBC3.origOwnsWep or _0x56D.OwnsCosmeticForWeapon
+
+    local function _0xAB3(_0xAC4, _0xAD5, _0xAE6)
+        local _0xAF7 = _0x56D.Cosmetics[_0xAC4]
+        if not _0xAF7 then return nil end
+        local _0xB08 = {}
+        for _0xC19, _0xD2A in pairs(_0xAF7) do _0xB08[_0xC19] = _0xD2A end
+        _0xB08.Name = _0xAC4
+        _0xB08.Type = _0xB08.Type or _0xAD5
+        _0xB08.Seed = _0xB08.Seed or math.random(1, 1000000)
+        if _0x78F then
+            local _0xE3B, _0xF4C = pcall(_0x78F.ToEnum, _0x78F, _0xAC4)
+            if _0xE3B and _0xF4C then
+                _0xB08.Enum = _0xF4C
+                _0xB08.ObjectID = _0xB08.ObjectID or _0xF4C
+            end
+        end
+        if _0xAE6 then
+            if _0xAE6.inverted ~= nil then _0xB08.Inverted = _0xAE6.inverted end
+            if _0xAE6.favoritesOnly ~= nil then _0xB08.OnlyUseFavorites = _0xAE6.favoritesOnly end
+        end
+        return _0xB08
+    end
+
+    local _0xC5D = "rivals_unlocker_config.json"
+
+    local function _0xF81()
+        if not isfile or not readfile then return end
+        local _0x092, _0x1A3 = pcall(isfile, _0xC5D)
+        if not _0x092 or not _0x1A3 then return end
+        local _0x2B4, _0x3C5 = pcall(readfile, _0xC5D)
+        if not _0x2B4 or not _0x3C5 or _0x3C5 == "" then return end
+        local _0x4D6, _0x5E7 = pcall(_0xF18.JSONDecode, _0xF18, _0x3C5)
+        if not _0x4D6 or not _0x5E7 then return end
+        if _0x5E7.favorites then _0x9A1 = _0x5E7.favorites end
+        if _0x5E7.equipped then
+            _0x890 = {}
+            for _0x6F8, _0x709 in pairs(_0x5E7.equipped) do
+                _0x890[_0x6F8] = {}
+                for _0x81A, _0x92B in pairs(_0x709) do
+                    if _0x92B and _0x92B.Name then
+                        if _0x56D.Cosmetics[_0x92B.Name] then
+                            local _0xA3C = _0xAB3(_0x92B.Name, _0x81A, {
+                                inverted = _0x92B.Inverted,
+                                favoritesOnly = _0x92B.OnlyUseFavorites
+                            })
+                            if _0xA3C then _0x890[_0x6F8][_0x81A] = _0xA3C end
+                        end
+                    end
+                end
+                if not next(_0x890[_0x6F8]) then _0x890[_0x6F8] = nil end
+            end
+        end
+    end
+    pcall(_0xF81)
+
+    local _0x49E = {"Skin","Wrap","Charm","Dance","Emote"}
+    local function _0x5AF(_0x6B0)
+        if not _0x6B0 then return false end
+        for _, _0x7C1 in ipairs(_0x49E) do
+            if _0x6B0.Type == _0x7C1 then return true end
+        end
+        return false
+    end
+
+    _0x56D.OwnsCosmeticNormally = function(_0x8D2, _0x9E3, _0xAF4, _0xB05)
+        if not _0xAB2 then return _0xBC3.origOwnsNorm(_0x8D2, _0x9E3, _0xAF4, _0xB05) end
+        local _0xC16 = _0x56D.Cosmetics[_0xAF4]
+        if _0xC16 and _0xC16.Type == "Skin" then return true end
+        return false
+    end
+    _0x56D.OwnsCosmeticUniversally = function(_0xD27, _0xE38, _0xF49, _0x05A)
+        if not _0xAB2 then return _0xBC3.origOwnsUniv(_0xD27, _0xE38, _0xF49, _0x05A) end
+        local _0x16B = _0x56D.Cosmetics[_0xF49]
+        if _0x16B and _0x16B.Type == "Skin" then return true end
+        return false
+    end
+    _0x56D.OwnsCosmeticForWeapon = function(_0x27C, _0x38D, _0x49E_w, _0x5AF_w)
+        if not _0xAB2 then return _0xBC3.origOwnsWep(_0x27C, _0x38D, _0x49E_w, _0x5AF_w) end
+        local _0x6B1 = _0x56D.Cosmetics[_0x49E_w]
+        if _0x6B1 and _0x6B1.Type == "Skin" then return true end
+        return false
+    end
+
+    _0x56D.OwnsCosmetic = function(_0x7C2, _0x8D3, _0x9E4, _0xAF5)
+        if not _0xAB2 then return _0xBC3.origOwns(_0x7C2, _0x8D3, _0x9E4, _0xAF5) end
+        if _0x9E4:find("MISSING_") or _0x9E4 == "Bubble Gun" then
+            return _0xBC3.origOwns(_0x7C2, _0x8D3, _0x9E4, _0xAF5)
+        end
+        local _0xB06 = _0x56D.Cosmetics[_0x9E4]
+        if _0xB06 and _0x5AF(_0xB06) then return true end
+        return _0xBC3.origOwns(_0x7C2, _0x8D3, _0x9E4, _0xAF5)
+    end
+
+    _0x67E.Get = function(_0xC17, _0xD28)
+        local _0xE39 = _0xBC3.origGet(_0xC17, _0xD28)
+        if not _0xAB2 then return _0xE39 end
+        if _0xD28 == "CosmeticInventory" then
+            local _0xF4A = {}
+            if _0xE39 then
+                for _0x05B, _0x16C in pairs(_0xE39) do
+                    local _0x27D = _0x56D.Cosmetics[_0x05B]
+                    if _0x27D and _0x5AF(_0x27D) then _0xF4A[_0x05B] = _0x16C end
+                end
+            end
+            return setmetatable(_0xF4A, {
+                __index = function(_0x38E, _0x49F)
+                    local _0x5A0 = _0x56D.Cosmetics[_0x49F]
+                    if _0x5A0 and _0x5AF(_0x5A0) then return true end
+                    return nil
+                end
+            })
+        end
+        if _0xD28 == "FavoritedCosmetics" then
+            local _0x6B2 = _0xE39 and table.clone(_0xE39) or {}
+            for _0x7C3, _0x8D4 in pairs(_0x9A1) do
+                _0x6B2[_0x7C3] = _0x6B2[_0x7C3] or {}
+                for _0x9E5, _0xAF6 in pairs(_0x8D4) do
+                    local _0xB07 = _0x56D.Cosmetics[_0x9E5]
+                    if _0xB07 and _0x5AF(_0xB07) then _0x6B2[_0x7C3][_0x9E5] = _0xAF6 end
+                end
+            end
+            return _0x6B2
+        end
+        return _0xE39
+    end
+
+    _0x67E.GetWeaponData = function(_0xC18, _0xD29)
+        local _0xE3A = _0xBC3.origGetWep(_0xC18, _0xD29)
+        if not _0xE3A or not _0xAB2 then return _0xE3A end
+        local _0xF4B = {}
+        for _0x05C, _0x16D in pairs(_0xE3A) do _0xF4B[_0x05C] = _0x16D end
+        _0xF4B.Name = _0xD29
+        if _0x890[_0xD29] then
+            for _0x27E, _0x38F in pairs(_0x890[_0xD29]) do _0xF4B[_0x27E] = _0x38F end
+        end
+        return _0xF4B
+    end
+end
+
+local _0x9A2 = Instance.new("ScreenGui")
+_0x9A2.Name = "SettingsPanel"
+_0x9A2.ResetOnSpawn = false
+_0x9A2.IgnoreGuiInset = true
+_0x9A2.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+_0x9A2.Parent = _0xFF6:WaitForChild("PlayerGui")
+
+local _0xAB3_frame = Instance.new("Frame")
+_0xAB3_frame.Name = "MainFrame"
+_0xAB3_frame.Size = UDim2.new(0, _0x339, 0, _0x44A)
+_0xAB3_frame.Position = UDim2.new(1, -30 - _0x339, 0.5, -_0x44A / 2)
+_0xAB3_frame.BackgroundColor3 = _0x228.__p
+_0xAB3_frame.BackgroundTransparency = _0x77D / 100
+_0xAB3_frame.BorderSizePixel = 0
+_0xAB3_frame.ClipsDescendants = true
+_0xAB3_frame.ZIndex = 1
+_0xAB3_frame.Parent = _0x9A2
+Instance.new("UICorner", _0xAB3_frame).CornerRadius = UDim.new(0, _0x55B)
+
+local _0xBC4 = Instance.new("UIStroke", _0xAB3_frame)
+_0xBC4.Name = "MarqueeStroke"
+_0xBC4.Thickness = 1.5
+_0xBC4.Color = _0x228.__a
+
+local _0xCD5 = false
+_0xDD4.RenderStepped:Connect(function()
+    if _0xAB3_frame.Visible then
+        if _0xCD5 then
+            local _0xDE6 = (math.sin(tick() * 20) + 1) / 2
+            _0xBC4.Color = Color3.fromRGB(255, _0xDE6 * 50, _0xDE6 * 50)
+            _0xBC4.Transparency = 0
+        else
+            _0xBC4.Color = _0x228.__a
+            local _0xEF7 = (math.sin(tick() * 3) + 1) / 2
+            _0xBC4.Transparency = math.clamp(_0xEF7 * 0.7, 0.2, 0.9)
+        end
+    end
+end)
+
+local _0xDE8 = Instance.new("Frame")
+_0xDE8.Name = "Header"
+_0xDE8.Size = UDim2.new(1, 0, 0, 56)
+_0xDE8.BackgroundTransparency = 1
+_0xDE8.ZIndex = 2
+_0xDE8.Parent = _0xAB3_frame
+
+local _0xEF9 = Instance.new("TextLabel")
+_0xEF9.BackgroundTransparency = 1
+_0xEF9.Position = UDim2.new(0, 36, 0, 8)
+_0xEF9.Size = UDim2.new(1, -80, 0, 20)
+_0xEF9.Font = Enum.Font.GothamBold
+_0xEF9.Text = "SYSTEM CONFIG"
+_0xEF9.TextColor3 = _0x228.__t
+_0xEF9.TextSize = 15
+_0xEF9.TextXAlignment = Enum.TextXAlignment.Left
+_0xEF9.ZIndex = 2
+_0xEF9.Parent = _0xDE8
+
+local _0xF0A = Instance.new("TextLabel")
+_0xF0A.BackgroundTransparency = 1
+_0xF0A.Position = UDim2.new(0, 36, 0, 28)
+_0xF0A.Size = UDim2.new(1, -80, 0, 14)
+_0xF0A.Font = Enum.Font.Code
+_0xF0A.Text = "SECURE_HUD // v3.9_SECURED"
+_0xF0A.TextColor3 = _0x228.__a
+_0xF0A.TextSize = 11
+_0xF0A.TextXAlignment = Enum.TextXAlignment.Left
+_0xF0A.ZIndex = 2
+_0xF0A.Parent = _0xDE8
+
+local _0x01B = Instance.new("TextButton")
+_0x01B.BackgroundTransparency = 1
+_0x01B.Position = UDim2.new(1, -44, 0, 12)
+_0x01B.Size = UDim2.new(0, 30, 0, 30)
+_0x01B.Font = Enum.Font.Code
+_0x01B.Text = "[X]"
+_0x01B.TextColor3 = _0x228.__st
+_0x01B.TextSize = 13
+_0x01B.ZIndex = 2
+_0x01B.Parent = _0xDE8
+_0x01B.MouseButton1Click:Connect(function() _0xAB3_frame.Visible = false end)
+
+local _0x12C = Instance.new("Frame")
+_0x12C.BackgroundColor3 = _0x228.__r
+_0x12C.BackgroundTransparency = _0x77D / 100
+_0x12C.Position = UDim2.new(0, 14, 0, 68)
+_0x12C.Size = UDim2.new(1, -28, 0, 48)
+_0x12C.ZIndex = 2
+_0x12C.Parent = _0xAB3_frame
+Instance.new("UICorner", _0x12C).CornerRadius = UDim.new(0, _0x66C)
+Instance.new("UIStroke", _0x12C).Color = _0x228.__b
+
+local _0x23D = Instance.new("TextLabel")
+_0x23D.BackgroundTransparency = 1
+_0x23D.Position = UDim2.new(0, 12, 0, 6)
+_0x23D.Size = UDim2.new(0.5, 0, 0, 16)
+_0x23D.Font = Enum.Font.Code
+_0x23D.Text = "RAGE_TARGET"
+_0x23D.TextColor3 = _0x228.__st
+_0x23D.TextSize = 12
+_0x23D.ZIndex = 2
+_0x23D.Parent = _0x12C
+
+local _0x34E = Instance.new("TextLabel")
+_0x34E.BackgroundTransparency = 1
+_0x34E.Position = UDim2.new(0.35, 0, 0, 6)
+_0x34E.Size = UDim2.new(0.65, -12, 0, 16)
+_0x34E.Font = Enum.Font.Code
+_0x34E.Text = "OFF / NO_TARGET"
+_0x34E.TextColor3 = _0x228.__d
+_0x34E.TextSize = 11
+_0x34E.TextXAlignment = Enum.TextXAlignment.Right
+_0x34E.ZIndex = 2
+_0x34E.Parent = _0x12C
+
+local _0x45F = Instance.new("Frame")
+_0x45F.Position = UDim2.new(0, 12, 0, 28)
+_0x45F.Size = UDim2.new(1, -24, 0, 8)
+_0x45F.BackgroundColor3 = _0x228.__tr
+_0x45F.ZIndex = 2
+_0x45F.Parent = _0x12C
+Instance.new("UICorner", _0x45F).CornerRadius = UDim.new(0, 2)
+
+local _0x560 = Instance.new("Frame")
+_0x560.Size = UDim2.new(0, 0, 1, 0)
+_0x560.BackgroundColor3 = _0x228.__d
+_0x560.ZIndex = 3
+_0x560.Parent = _0x45F
+Instance.new("UICorner", _0x560).CornerRadius = UDim.new(0, 2)
+
+local _0x671 = Instance.new("Frame")
+_0x671.Name = "Content"
+_0x671.BackgroundTransparency = 1
+_0x671.Position = UDim2.new(0, 14, 0, 126)
+_0x671.Size = UDim2.new(1, -28, 1, -136)
+_0x671.ZIndex = 2
+_0x671.Parent = _0xAB3_frame
+
+local _0x782 = Instance.new("UIListLayout")
+_0x782.SortOrder = Enum.SortOrder.LayoutOrder
+_0x782.Padding = UDim.new(0, 8)
+_0x782.Parent = _0x671
+
+local function _0x893(_0x9A4, _0xAB5, _0xBC6, _0xCD7, _0xDE8_arg, _0xEF9_arg, _0xF0A_arg, _0x01B_arg)
+    local _0x12C_f = Instance.new("Frame")
+    _0x12C_f.BackgroundColor3 = _0x228.__r
+    _0x12C_f.BackgroundTransparency = _0x77D / 100
+    _0x12C_f.Size = UDim2.new(1, 0, 0, 48)
+    _0x12C_f.LayoutOrder = _0x9A4
+    _0x12C_f.ZIndex = 2
+    _0x12C_f.Parent = _0x671
+    Instance.new("UICorner", _0x12C_f).CornerRadius = UDim.new(0, _0x66C)
+    Instance.new("UIStroke", _0x12C_f).Color = _0x228.__b
+
+    local _0x23D_l = Instance.new("TextLabel")
+    _0x23D_l.BackgroundTransparency = 1
+    _0x23D_l.Position = UDim2.new(0, 12, 0, 4)
+    _0x23D_l.Size = UDim2.new(0.6, 0, 0, 16)
+    _0x23D_l.Font = Enum.Font.Code
+    _0x23D_l.Text = _0xAB5
+    _0x23D_l.TextColor3 = _0x228.__st
+    _0x23D_l.TextSize = 12
+    _0x23D_l.ZIndex = 2
+    _0x23D_l.Parent = _0x12C_f
+
+    local _0x34E_l = Instance.new("TextLabel")
+    _0x34E_l.BackgroundTransparency = 1
+    _0x34E_l.Position = UDim2.new(0.4, 0, 0, 4)
+    _0x34E_l.Size = UDim2.new(0.55, 0, 0, 16)
+    _0x34E_l.Font = Enum.Font.Code
+    _0x34E_l.Text = tostring(_0xDE8_arg) .. (_0xEF9_arg or "")
+    _0x34E_l.TextColor3 = _0x228.__a
+    _0x34E_l.TextSize = 12
+    _0x34E_l.TextXAlignment = Enum.TextXAlignment.Right
+    _0x34E_l.ZIndex = 2
+    _0x34E_l.Parent = _0x12C_f
+
+    local _0x45F_b = Instance.new("Frame")
+    _0x45F_b.Position = UDim2.new(0, 12, 0, 28)
+    _0x45F_b.Size = UDim2.new(1, -24, 0, 4)
+    _0x45F_b.BackgroundColor3 = _0x228.__tr
+    _0x45F_b.ZIndex = 2
+    _0x45F_b.Parent = _0x12C_f
+
+    local _0x560_p = (_0xDE8_arg - _0xBC6) / (_0xCD7 - _0xBC6)
+    local _0x671_fill = Instance.new("Frame")
+    _0x671_fill.Size = UDim2.new(_0x560_p, 0, 1, 0)
+    _0x671_fill.BackgroundColor3 = _0x228.__a
+    _0x671_fill.ZIndex = 2
+    _0x671_fill.Parent = _0x45F_b
+
+    local _0x782_knob = Instance.new("Frame")
+    _0x782_knob.Size = UDim2.new(0, 4, 0, 12)
+    _0x782_knob.AnchorPoint = Vector2.new(0.5, 0.5)
+    _0x782_knob.Position = UDim2.new(_0x560_p, 0, 0.5, 0)
+    _0x782_knob.BackgroundColor3 = _0x228.__a
+    _0x782_knob.ZIndex = 3
+    _0x782_knob.Parent = _0x45F_b
+
+    local _0x893_btn = Instance.new("TextButton")
+    _0x893_btn.BackgroundTransparency = 1
+    _0x893_btn.Text = ""
+    _0x893_btn.Size = UDim2.new(1, 10, 1, 16)
+    _0x893_btn.Position = UDim2.new(0, -5, 0.5, -8)
+    _0x893_btn.ZIndex = 4
+    _0x893_btn.Parent = _0x45F_b
+
+    local _0x9A4_drag = false
+    local function _0xAB5_update(_0xBC6_x)
+        local _0xCD7_pct = math.clamp((_0xBC6_x - _0x45F_b.AbsolutePosition.X) / _0x45F_b.AbsoluteSize.X, 0, 1)
+        local _0xDE8_val = _0xBC6 + (_0xCD7 - _0xBC6) * _0xCD7_pct
+        if _0xF0A_arg then
+            _0xDE8_val = math.floor(_0xDE8_val * 10 + 0.5) / 10
+            _0x34E_l.Text = string.format("%.1f%s", _0xDE8_val, _0xEF9_arg or "")
+        else
+            _0xDE8_val = math.floor(_0xDE8_val + 0.5)
+            _0x34E_l.Text = tostring(_0xDE8_val) .. (_0xEF9_arg or "")
+        end
+        _0x671_fill.Size = UDim2.new((_0xDE8_val - _0xBC6)/(_0xCD7 - _0xBC6), 0, 1, 0)
+        _0x782_knob.Position = UDim2.new((_0xDE8_val - _0xBC6)/(_0xCD7 - _0xBC6), 0, 0.5, 0)
+        if _0x01B_arg then _0x01B_arg(_0xDE8_val) end
+    end
+
+    _0x893_btn.InputBegan:Connect(function(_0xEF9_input)
+        if _0xEF9_input.UserInputType == Enum.UserInputType.MouseButton1 or _0xEF9_input.UserInputType == Enum.UserInputType.Touch then
+            _0x9A4_drag = true
+            _0xAB5_update(_0xEF9_input.Position.X)
+        end
+    end)
+    _0xCC3.InputChanged:Connect(function(_0xF0A_input)
+        if _0x9A4_drag and (_0xF0A_input.UserInputType == Enum.UserInputType.MouseMovement or _0xF0A_input.UserInputType == Enum.UserInputType.Touch) then
+            _0xAB5_update(_0xF0A_input.Position.X)
+        end
+    end)
+    _0xCC3.InputEnded:Connect(function(_0x01B_input)
+        if _0x01B_input.UserInputType == Enum.UserInputType.MouseButton1 or _0x01B_input.UserInputType == Enum.UserInputType.Touch then
+            _0x9A4_drag = false
+        end
+    end)
+end
+
+local function _0x994(_0xAA5, _0xBB6, _0xCC7, _0xDD8)
+    local _0xEE9 = Instance.new("Frame")
+    _0xEE9.BackgroundColor3 = _0x228.__r
+    _0xEE9.BackgroundTransparency = _0x77D / 100
+    _0xEE9.Size = UDim2.new(1, 0, 0, 40)
+    _0xEE9.LayoutOrder = _0xAA5
+    _0xEE9.ZIndex = 2
+    _0xEE9.Parent = _0x671
+    Instance.new("UICorner", _0xEE9).CornerRadius = UDim.new(0, _0x66C)
+    Instance.new("UIStroke", _0xEE9).Color = _0x228.__b
+
+    local _0xFF0 = Instance.new("TextLabel")
+    _0xFF0.BackgroundTransparency = 1
+    _0xFF0.Position = UDim2.new(0, 12, 0, 0)
+    _0xFF0.Size = UDim2.new(1, -110, 1, 0)
+    _0xFF0.Font = Enum.Font.Code
+    _0xFF0.Text = _0xBB6
+    _0xFF0.TextColor3 = _0x228.__t
+    _0xFF0.TextSize = 13
+    _0xFF0.TextXAlignment = Enum.TextXAlignment.Left
+    _0xFF0.ZIndex = 2
+    _0xFF0.Parent = _0xEE9
+
+    local _0x111 = Instance.new("TextButton")
+    _0x111.Size = UDim2.new(0, 80, 0, 24)
+    _0x111.Position = UDim2.new(1, -88, 0.5, -12)
+    _0x111.BackgroundColor3 = _0x228.__ad
+    _0x111.Font = Enum.Font.Code
+    _0x111.Text = _0xCC7
+    _0x111.TextColor3 = _0x228.__a
+    _0x111.TextSize = 12
+    _0x111.ZIndex = 3
+    _0x111.Parent = _0xEE9
+    Instance.new("UICorner", _0x111).CornerRadius = UDim.new(0, _0x66C)
+    Instance.new("UIStroke", _0x111).Color = _0x228.__a
+
+    _0x111.MouseButton1Click:Connect(function() if _0xDD8 then _0xDD8(_0x111) end end)
+    return _0xEE9
+end
+
+_0x893(1, "ATTACK_SPEED", 1.0, 20.0, 1.0, "x", true, function(_0x222)
+    _0x99F(_0x222)
+end)
+
+_0x893(2, "CAMERA_FOV", 50, 120, 120, "", false, function(_0x333) _0x117.FieldOfView = _0x333 end)
+
+_0x893(3, "VOID_DEPTH", 20, 300, 104, " studs", false, function(_0x444)
+    _G.VoidDepthOffset = _0x444
+end)
+
+_0x994(4, "SKIN_UNLOCKER", "LOAD", function(_0x555)
+    local _0x666 = not _0xAB2
+    _0xCD4(_0x666)
+    _0x555.Text = _0x666 and "ACTIVE" or "LOAD"
+    _0x555.TextColor3 = _0x666 and _0x228.__p or _0x228.__a
+    _0x555.BackgroundColor3 = _0x666 and _0x228.__a or _0x228.__ad
+end)
+
+local _0x777_toggle = false
+local _0x888_pos = nil
+local _0x999_hp = 100
+
+local _0xAAA_rage = false
+local _0xBBB_targetData = nil
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if _0xAAA_rage then
+            local _0xCCC = _0xFF6.Character
+            local _0xDDD = _0xCCC and _0xCCC:FindFirstChild("HumanoidRootPart")
+            if _0xDDD then
+                local _0xEEE, _0xFFF, _0x000 = nil, nil, "NO_TARGET"
+                local _0x111_dist = math.huge
+                for _, _0x222_p in ipairs(_0xAA1:GetPlayers()) do
+                    if _0x222_p ~= _0xFF6 and _0x222_p.Character then
+                        local _0x333_rp = _0x222_p.Character:FindFirstChild("HumanoidRootPart")
+                        local _0x444_hum = _0x222_p.Character:FindFirstChildOfClass("Humanoid")
+                        if _0x333_rp and _0x444_hum and _0x444_hum.Health > 0 then
+                            local _0x555_mag = (_0xDDD.Position - _0x333_rp.Position).Magnitude
+                            if _0x555_mag < _0x111_dist then
+                                _0x111_dist = _0x555_mag
+                                _0xEEE = _0x444_hum
+                                _0xFFF = _0x333_rp
+                                _0x000 = _0x222_p.Name
+                            end
+                        end
+                    end
+                end
+                _0xBBB_targetData = { root = _0xFFF, hum = _0xEEE, name = _0x000 }
+            else
+                _0xBBB_targetData = nil
+            end
+        end
+    end
+end)
+
+_0xDD4.Stepped:Connect(function()
+    local _0x666_char = _0xFF6.Character
+    if not _0x666_char then return end
+    local _0x777_rp = _0x666_char:FindFirstChild("HumanoidRootPart")
+    local _0x888_hum = _0x666_char:FindFirstChildOfClass("Humanoid")
+    if not _0x777_rp or not _0x888_hum then return end
+
+    if _0x777_toggle then
+        if _0x888_hum.Health < _0x999_hp then
+            _0xCD5 = true
+            _0xF0A.Text = "!! WARNING: UNDER ATTACK !!"
+            _0xF0A.TextColor3 = _0x228.__d
+            task.delay(0.8, function()
+                if _0x777_toggle then _0xF0A.Text = "SECURE_HUD // v3.9_SECURED"; _0xF0A.TextColor3 = _0x228.__a; _0xCD5 = false end
+            end)
+        end
+        _0x999_hp = _0x888_hum.Health
+        if _0x888_pos then
+            local _0x999_spread = 40
+            local _0xAAA_x = (math.random() * 2 - 1) * _0x999_spread
+            local _0xBBB_z = (math.random() * 2 - 1) * _0x999_spread
+            local _0xCCC_y = _0x888_pos.Y - _G.VoidDepthOffset
+            _0x777_rp.CFrame = CFrame.new(_0x888_pos.X + _0xAAA_x, _0xCCC_y, _0x888_pos.Z + _0xBBB_z)
+            _0x777_rp.AssemblyLinearVelocity = Vector3.zero
+            _0x777_rp.AssemblyAngularVelocity = Vector3.zero
+        end
+    elseif _0xAAA_rage then
+        _0x888_hum.AutoRotate = false
+        for _, _0xDDD_part in ipairs(_0x666_char:GetDescendants()) do if _0xDDD_part:IsA("BasePart") then _0xDDD_part.CanCollide = false end end
+        if _0xBBB_targetData and _0xBBB_targetData.root and _0xBBB_targetData.hum.Health > 0 then
+            local _0xEEE_tr = _0xBBB_targetData.root
+            local _0xFFF_hpInt = math.floor(_0xBBB_targetData.hum.Health + 0.5)
+            local _0x000_maxHp = math.floor(_0xBBB_targetData.hum.MaxHealth + 0.5)
+            _0x34E.Text = string.format("%s: %d/%d", _0xBBB_targetData.name, _0xFFF_hpInt, _0x000_maxHp)
+            local _0x111_ratio = math.clamp(_0xBBB_targetData.hum.Health / _0xBBB_targetData.hum.MaxHealth, 0, 1)
+            _0x560.Size = UDim2.new(_0x111_ratio, 0, 1, 0)
+
+            local _0x222_t = tick() * 12
+            local _0x333_r = 3.5
+            local _0x444_th = _0x222_t % (math.pi * 2)
+            local _0x555_ox = math.cos(_0x444_th) * _0x333_r
+            local _0x666_oz = math.sin(_0x444_th) * _0x333_r
+            local _0x777_oy = math.sin(_0x222_t * 1.5) * 2.5
+
+            local _0x888_posTarget = _0xEEE_tr.Position + Vector3.new(_0x555_ox, _0x777_oy, _0x666_oz)
+            _0x777_rp.CFrame = CFrame.lookAt(_0x888_posTarget, _0xEEE_tr.Position)
+            _0x777_rp.AssemblyLinearVelocity = Vector3.zero
+            _0x777_rp.AssemblyAngularVelocity = Vector3.zero
+        else
+            _0x34E.Text = "NO_TARGET"
+            _0x560.Size = UDim2.new(0, 0, 1, 0)
+        end
+    end
+end)
+
+_0x994(5, "VOID_LOCK", "OFF", function(_0x999_btn)
+    _0x777_toggle = not _0x777_toggle
+    local _0xAAA_char = _0xFF6.Character
+    local _0xBBB_rp = _0xAAA_char and _0xAAA_char:FindFirstChild("HumanoidRootPart")
+    local _0xCCC_hum = _0xAAA_char and _0xAAA_char:FindFirstChildOfClass("Humanoid")
+    if _0x777_toggle then
+        if _0xBBB_rp and _0xCCC_hum then
+            _0x888_pos = _0xBBB_rp.Position
+            _0x999_hp = _0xCCC_hum.Health
+        end
+        _0x999_btn.Text = "ON"
+        _0x999_btn.TextColor3 = _0x228.__p
+        _0x999_btn.BackgroundColor3 = _0x228.__a
+    else
+        _0xCD5 = false
+        _0xF0A.Text = "SECURE_HUD // v3.9_SECURED"
+        _0xF0A.TextColor3 = _0x228.__a
+        if _0xBBB_rp and _0x888_pos then
+            _0xBBB_rp.CFrame = CFrame.new(_0x888_pos)
+        end
+        _0x888_pos = nil
+        _0x999_btn.Text = "OFF"
+        _0x999_btn.TextColor3 = _0x228.__a
+        _0x999_btn.BackgroundColor3 = _0x228.__ad
+    end
+end)
+
+_0x994(6, "RAGE", "OFF", function(_0xDDD_btn)
+    _0xAAA_rage = not _0xAAA_rage
+    local _0xEEE_char = _0xFF6.Character
+    local _0xFFF_rp = _0xEEE_char and _0xEEE_char:FindFirstChild("HumanoidRootPart")
+    local _0x000_hum = _0xEEE_char and _0xEEE_char:FindFirstChildOfClass("Humanoid")
+    if _0xAAA_rage then
+        _0xDDD_btn.Text = "ON"
+        _0xDDD_btn.TextColor3 = _0x228.__p
+        _0xDDD_btn.BackgroundColor3 = _0x228.__a
+    else
+        if _0x000_hum then _0x000_hum.AutoRotate = true; _0x000_hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+        if _0xEEE_char then for _, _0x111_pt in ipairs(_0xEEE_char:GetDescendants()) do if _0x111_pt:IsA("BasePart") then _0x111_pt.CanCollide = true end end end
+        _0xBBB_targetData = nil
+        _0x34E.Text = "OFF / NO_TARGET"
+        _0x560.Size = UDim2.new(0, 0, 1, 0)
+        _0xDDD_btn.Text = "OFF"
+        _0xDDD_btn.TextColor3 = _0x228.__a
+        _0xDDD_btn.BackgroundColor3 = _0x228.__ad
+    end
+end)
+
+local _0x222_toggleBtn = Instance.new("TextButton")
+_0x222_toggleBtn.Name = "OpenSettingsButton"
+_0x222_toggleBtn.Size = UDim2.new(0, 46, 0, 46)
+_0x222_toggleBtn.Position = UDim2.new(1, -66, 1, -66)
+_0x222_toggleBtn.BackgroundColor3 = _0x228.__p
+_0x222_toggleBtn.Font = Enum.Font.Code
+_0x222_toggleBtn.Text = "[#]"
+_0x222_toggleBtn.TextColor3 = _0x228.__a
+_0x222_toggleBtn.TextSize = 14
+_0x222_toggleBtn.Parent = _0x9A2
+_0x222_toggleBtn.MouseButton1Click:Connect(function() _0xAB3_frame.Visible = not _0xAB3_frame.Visible end)
